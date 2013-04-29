@@ -26,7 +26,7 @@ setup(
     license='MIT License',
     platforms=['any'],
     packages=['piletools'],
-    requires=requires,
+    install_requires=requires,
     entry_points = {
         'console_scripts': [
             'piletools = piletools.piletools:main'
