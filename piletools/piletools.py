@@ -196,7 +196,8 @@ def main():
     name = os.path.splitext(os.path.basename(args.INPUT.name))[0]
 
     if args.subcommand == "mpileup2wig":
-        wiggelen.write(mpileup2wig(args.INPUT, args.gaps), args.OUTPUT)
+        wiggelen.write(mpileup2wig(args.INPUT, args.gaps), args.OUTPUT, str,
+            name, name)
 
     if args.subcommand == "mpileup2tagwig":
         wiggelen.write(mpileup2tagwig(args.INPUT, True, args.threePrime),
