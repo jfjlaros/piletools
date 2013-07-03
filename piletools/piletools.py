@@ -1,20 +1,12 @@
 #!/usr/bin/python
 
-"""
-Toolkit for the analysis of pileup files.
-
-
-Use any of the positional arguments with the -h option for more information.
-"""
-
 import argparse
 import re
 import os
 
 import wiggelen
 
-def docSplit(func):
-    return func.__doc__.split("\n\n")[0]
+from . import docSplit, version, usage
 
 def findall(string, substring):
     """
@@ -170,10 +162,10 @@ def main():
     input_parser.add_argument("INPUT", type=argparse.FileType('r'),
         help="pileup file")
 
-    usage = __doc__.split("\n\n\n")
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=usage[0], epilog=usage[1])
+    parser.add_argument('-v', action="version", version=version(parser.prog))
     subparsers = parser.add_subparsers(dest="subcommand")
 
     parser_pileup2wig = subparsers.add_parser("mpileup2wig",
