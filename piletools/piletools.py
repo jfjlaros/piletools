@@ -1,8 +1,9 @@
 #!/usr/bin/python
 
-import argparse
-import re
 import os
+import re
+import argparse
+import collections
 
 import wiggelen
 
@@ -28,6 +29,58 @@ def findall(string, substring):
     return occurences
 #findall
 
+class BaseReader(object):
+    """
+    """
+    def __init__(self, bases):
+        """
+        @arg bases:
+        @type bases: str
+        """
+        self.bases = bases
+        self.offset = -1
+    #__init__
+
+    def __iter__(self):
+        return self
+
+    def _get_indel(self):
+        """
+        @returns:
+        @rtype: str
+        """
+        self.offset += 1
+
+        len_str = ""
+        while self.bases[self.offset].isdigit():
+            len_str += self.bases[self.offset]
+            self.offset += 1
+        #while
+        length = int(len_str)
+
+        self.offset += length
+        return self.bases[self.offset - length:self.offset]
+    #_get_indel
+
+    def next(self):
+        """
+        @returns:
+        @rtype: str
+        """
+        self.offset += 1
+        if self.offset >= len(self.bases):
+            raise StopIteration
+
+        if self.bases[self.offset] == '^':
+            self.offset += 1
+            return '^'
+        #if
+        if self.bases[self.offset] in ('+', '-'):
+            return self.bases[self.offset] + self._get_indel()
+        return self.bases[self.offset]
+    #next
+#BaseReader
+
 class PileRecord(object):
     """
     Container for a pileup record.
@@ -48,9 +101,13 @@ class PileRecord(object):
 
         self.bases = ""
         self.qual = ""
+        self.base_dict = collections.defaultdict(int)
         if self.coverage:
             self.bases = field[4]
             self.qual = field[5]
+
+            for i in BaseReader(self.bases):
+                self.base_dict[i] += 1
         #if
     #__init__
 
@@ -154,6 +211,14 @@ def mpileup2wig(handle, gaps):
     #for
 #mpileup2wig
 
+def varcall(handle):
+    """
+    """
+    for record in PileReader(handle):
+        print record.pos, record.base_dict
+    #for
+#varcall
+
 def main():
     """
     Main entry point.
@@ -161,6 +226,9 @@ def main():
     input_parser = argparse.ArgumentParser(add_help=False)
     input_parser.add_argument("INPUT", type=argparse.FileType('r'),
         help="pileup file")
+    output_parser = argparse.ArgumentParser(add_help=False)
+    output_parser.add_argument("OUTPUT", type=argparse.FileType('w'),
+        help="output file")
 
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
@@ -169,9 +237,8 @@ def main():
     subparsers = parser.add_subparsers(dest="subcommand")
 
     parser_pileup2wig = subparsers.add_parser("mpileup2wig",
-        parents=[input_parser], description=docSplit(mpileup2wig))
-    parser_pileup2wig.add_argument("OUTPUT", type=argparse.FileType('w'),
-        help="output file")
+        parents=[input_parser, output_parser],
+        description=docSplit(mpileup2wig))
     parser_pileup2wig.add_argument('-g', dest='gaps', action="store_const",
         const="remove", help='Remove large gaps.')
     parser_pileup2wig.add_argument('-G', dest='gaps', action="store_const",
@@ -183,6 +250,9 @@ def main():
         nargs=2, help="forward and reverse output files")
     parser_pileup2tagwig.add_argument('-p', dest='threePrime', default=False,
         action="store_true", help="record the 3' end of the reads")
+
+    parser_varcall = subparsers.add_parser("varcall",
+        parents=[input_parser, output_parser], description=docSplit(varcall))
 
     args = parser.parse_args()
     name = os.path.splitext(os.path.basename(args.INPUT.name))[0]
@@ -198,6 +268,9 @@ def main():
         wiggelen.write(mpileup2tagwig(args.INPUT, False, args.threePrime),
             args.OUTPUT[1], str, name + "_reverse", name + "_reverse")
     #if
+
+    if args.subcommand == "varcall":
+        varcall(args.INPUT)
 #main
 
 if __name__ == "__main__":
