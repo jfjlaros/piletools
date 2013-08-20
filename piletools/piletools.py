@@ -1,5 +1,7 @@
 #!/usr/bin/python
 
+from __future__ import division
+
 import os
 import re
 import argparse
@@ -58,8 +60,8 @@ class BaseReader(object):
         #while
         length = int(len_str)
 
-        self.offset += length
-        return self.bases[self.offset - length:self.offset]
+        self.offset += length - 1
+        return self.bases[self.offset - length + 1:self.offset + 1]
     #_get_indel
 
     def next(self):
@@ -112,7 +114,7 @@ class PileRecord(object):
             for variant in BaseReader(self.bases):
                 self.variants[variant] += 1
                 if variant not in self.special_chars:
-                    self.simple_variants[self.simplify(variant)] += 1
+                    self.simple_variants[self._simplify(variant)] += 1
             #for
         #if
     #__init__
@@ -121,7 +123,7 @@ class PileRecord(object):
         return "%s\t%i\t%s\t%i\t%s\t%s" % (self.chrom, self.pos, self.ref,
             self.coverage, self.bases, self.qual)
 
-    def simplify(self, variant):
+    def _simplify(self, variant):
         """
         """
         if variant == ',':
@@ -129,12 +131,17 @@ class PileRecord(object):
         if variant == '<': # Or the other way around, CHECK THIS.
             return '>'
         return variant.upper()
-    #simplify
+    #_simplify
 
-    def varcall(self):
+    def variant(self, threshold, freq):
         """
         """
-        pass
+        result = []
+        for variant in self.simple_variants:
+            if (variant != '.' and self.simple_variants[variant] >= threshold
+                    and self.simple_variants[variant] / self.coverage >= freq):
+                result.append(variant)
+        return result
     #varcall
 
     def consensus(self):
@@ -247,7 +254,9 @@ def varcall(handle):
     """
     """
     for record in PileReader(handle):
-        print record.pos, record.simple_variants, record.consensus()
+        variant = record.variant(10, 0.1)
+        if variant:
+            print record.pos, variant
     #for
 #varcall
 
