@@ -85,6 +85,8 @@ class PileRecord(object):
     """
     Container for a pileup record.
     """
+    special_chars = ('^', '$', '<', '>', '*')
+
     def __init__(self, line):
         """
         Initialise the class.
@@ -101,19 +103,49 @@ class PileRecord(object):
 
         self.bases = ""
         self.qual = ""
-        self.base_dict = collections.defaultdict(int)
+        self.variants = collections.defaultdict(int)
+        self.simple_variants = collections.defaultdict(int)
         if self.coverage:
             self.bases = field[4]
             self.qual = field[5]
 
-            for i in BaseReader(self.bases):
-                self.base_dict[i] += 1
+            for variant in BaseReader(self.bases):
+                self.variants[variant] += 1
+                if variant not in self.special_chars:
+                    self.simple_variants[self.simplify(variant)] += 1
+            #for
         #if
     #__init__
 
     def __str__(self):
         return "%s\t%i\t%s\t%i\t%s\t%s" % (self.chrom, self.pos, self.ref,
             self.coverage, self.bases, self.qual)
+
+    def simplify(self, variant):
+        """
+        """
+        if variant == ',':
+            return '.'
+        if variant == '<': # Or the other way around, CHECK THIS.
+            return '>'
+        return variant.upper()
+    #simplify
+
+    def varcall(self):
+        """
+        """
+        pass
+    #varcall
+
+    def consensus(self):
+        """
+        """
+        result = max(self.simple_variants, key=lambda x:
+            self.simple_variants[x])
+        if result == '.':
+            return self.ref
+        return result
+    #consensus
 #PileRecord
 
 class PileReader(object):
@@ -215,7 +247,7 @@ def varcall(handle):
     """
     """
     for record in PileReader(handle):
-        print record.pos, record.base_dict
+        print record.pos, record.simple_variants, record.consensus()
     #for
 #varcall
 
