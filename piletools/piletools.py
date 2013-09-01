@@ -31,16 +31,39 @@ def findall(string, substring):
     return occurences
 #findall
 
+class Base(object):
+    """
+    """
+    forward = ('A', 'C', 'G', 'T', '.', '>')
+    reverse = ('a', 'c', 'g', 't', ',', '<')
+
+    def __init__(self, nucleotide, quality, is_start=False, is_end=False):
+        """
+        """
+        self.nucleotide = nucleotide.upper()
+        self.quality = quality
+        self.is_start = is_start
+        self.is_end = is_end
+        self.is_forward = nucleotide in self.forward
+    #__init__
+
+    def __str__(self):
+        return "{} {} {} {} {} {}".format(self.nucleotide, self.quality,
+            self.is_start, self.is_end, self.is_forward)
+#Base
+
 class BaseReader(object):
     """
     """
-    def __init__(self, bases):
+    def __init__(self, bases, qual):
         """
         @arg bases:
         @type bases: str
         """
         self.bases = bases
-        self.offset = -1
+        self.qual = qual
+        self.base_offset = -1
+        self.qual_offset = -1
     #__init__
 
     def __iter__(self):
@@ -51,17 +74,17 @@ class BaseReader(object):
         @returns:
         @rtype: str
         """
-        self.offset += 1
+        self.base_offset += 1
 
         len_str = ""
-        while self.bases[self.offset].isdigit():
-            len_str += self.bases[self.offset]
-            self.offset += 1
+        while self.bases[self.base_offset].isdigit():
+            len_str += self.bases[self.base_offset]
+            self.base_offset += 1
         #while
         length = int(len_str)
 
-        self.offset += length - 1
-        return self.bases[self.offset - length + 1:self.offset + 1]
+        self.base_offset += length - 1
+        return self.bases[self.base_offset - length + 1:self.base_offset + 1]
     #_get_indel
 
     def next(self):
@@ -69,17 +92,19 @@ class BaseReader(object):
         @returns:
         @rtype: str
         """
-        self.offset += 1
-        if self.offset >= len(self.bases):
+        self.base_offset += 1
+        self.qual_offset += 1
+        if self.base_offset >= len(self.bases):
             raise StopIteration
 
-        if self.bases[self.offset] == '^':
-            self.offset += 1
-            return '^'
+        if self.bases[self.base_offset] == '^':
+            self.base_offset += 2
+            return Base(self.bases[self.base_offset],
+                self.qual[self.qual_offset], is_start=True)
         #if
-        if self.bases[self.offset] in ('+', '-'):
-            return self.bases[self.offset] + self._get_indel()
-        return self.bases[self.offset]
+        if self.bases[self.base_offset] in ('+', '-'):
+            return self.bases[self.base_offset] + self._get_indel()
+        return self.bases[self.base_offset]
     #next
 #BaseReader
 
@@ -111,7 +136,7 @@ class PileRecord(object):
             self.bases = field[4]
             self.qual = field[5]
 
-            for variant in BaseReader(self.bases):
+            for variant in BaseReader(self.bases, self.qual):
                 self.variants[variant] += 1
                 if variant not in self.special_chars:
                     self.simple_variants[self._simplify(variant)] += 1

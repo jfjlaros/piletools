@@ -9,9 +9,7 @@ Licensed under the MIT license, see the LICENSE file.
 """
 
 # On the event of a new release, we update the __version_info__ package
-# global and set RELEASE to True.
-# Before a release, a development version is denoted by a __version_info__
-# ending with a 'dev' item and RELEASE is set to False.
+# global.
 #
 # We follow a versioning scheme compatible with setuptools [1] where the
 # __version_info__ variable always contains the version of the upcomming
@@ -21,10 +19,7 @@ Licensed under the MIT license, see the LICENSE file.
 #
 # [1] http://peak.telecommunity.com/DevCenter/setuptools#specifying-your-project-s-version
 
-RELEASE = False
-
-__version_info__ = ('0', '21', 'dev')
-
+__version_info__ = ('0', '21', '0')
 
 __version__ = '.'.join(__version_info__)
 __author__ = 'LUMC, Jeroen F.J. Laros'
