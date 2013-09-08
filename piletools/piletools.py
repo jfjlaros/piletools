@@ -59,6 +59,7 @@ class PileRecord(object):
             self.bases = field[4]
             self.qual = field[5]
 
+            print self.bases
             for variant in BaseReader(self.ref, self.bases, self.qual):
                 self.variants[variant] += 1
             #for
@@ -72,12 +73,13 @@ class PileRecord(object):
     def variant(self, threshold, freq):
         """
         """
-        result = []
-        for variant in self.simple_variants:
-            if (variant != '.' and self.simple_variants[variant] >= threshold
-                    and self.simple_variants[variant] / self.coverage >= freq):
-                result.append(variant)
-        return result
+        pass
+        #result = []
+        #for variant in self.simple_variants:
+        #    if (variant != '.' and self.simple_variants[variant] >= threshold
+        #            and self.simple_variants[variant] / self.coverage >= freq):
+        #        result.append(variant)
+        #return result
     #varcall
 
     def consensus(self):

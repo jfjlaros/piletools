@@ -44,6 +44,7 @@ class BaseReader(object):
     start = '^'
     end = '$'
 
+    border = (start, end)
     indel = ('+', '-')
     insertion = '+'
 
@@ -64,6 +65,7 @@ class BaseReader(object):
     def get_indel(self):
         """
         """
+        # NOTE: Apparently there are no quality scores for indels.
         insertion = self.bases[self.base_offset] == self.insertion
         self.base_offset += 1
 
@@ -77,21 +79,23 @@ class BaseReader(object):
         bases = []
         for i in range(length):
             bases.append(Base(self.reference,
-                self.bases[self.base_offset + i],
-                self.qualities[self.qual_offset + i]))
+                self.bases[self.base_offset + i], 'I'))
 
         self.base_offset += length - 1
-        self.qual_offset += length - 1
 
         return insertion, bases
     #get_indel
 
     def next(self):
         self.base_offset += 1
-        self.qual_offset += 1
 
         if self.base_offset >= len(self.bases):
             raise StopIteration
+
+        if self.bases[self.base_offset] == self.start:
+            self.base_offset += 2
+        if self.bases[self.base_offset] == self.end:
+            self.base_offset += 1
 
         if self.bases[self.base_offset] in self.indel:
             is_insertion, bases = self.get_indel()
@@ -99,6 +103,9 @@ class BaseReader(object):
             return Variant(bases, is_insertion=is_insertion,
                 is_deletion=not is_insertion)
         #if
+
+        self.qual_offset += 1
+
         return Variant([Base(self.reference, self.bases[self.base_offset], 
             self.qualities[self.qual_offset])])
     #next
@@ -107,6 +114,10 @@ class BaseReader(object):
 def main():
     x = ",,,,..,..,,.+1C..,.+1A,,.,..,,."
     y = "IIIIIIIIIIIIIIIIIIIIIIIIIII"
+    x = "ICcCCCcCccCcCCcc.CcCcccccccCCcC"
+    y = "I4=/5<=5==+>8:@='></.?9<:*9<?/9"
+    x = ",,,,..,..,,.+1C..,.+1A,,.,..,,."
+    y = "CC@CC5@?3!@+  A?867  3A=A8?<C"
     #x = "+2ACGG"
     #y = "IJNN"
     #x = "Ccc.CcC"
