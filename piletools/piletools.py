@@ -1,20 +1,16 @@
 #!/usr/bin/python
 
-"""
-Toolkit for the analysis of pileup files.
+from __future__ import division
 
-
-Use any of the positional arguments with the -h option for more information.
-"""
-
-import argparse
-import re
 import os
+import re
+import argparse
+import collections
 
 import wiggelen
 
-def docSplit(func):
-    return func.__doc__.split("\n\n")[0]
+from . import docSplit, version, usage
+from basereader import BaseReader
 
 def findall(string, substring):
     """
@@ -40,6 +36,8 @@ class PileRecord(object):
     """
     Container for a pileup record.
     """
+    special_chars = ('^', '$', '<', '>', '*')
+
     def __init__(self, line):
         """
         Initialise the class.
@@ -56,15 +54,41 @@ class PileRecord(object):
 
         self.bases = ""
         self.qual = ""
+        self.variants = collections.defaultdict(int)
         if self.coverage:
             self.bases = field[4]
             self.qual = field[5]
+
+            for variant in BaseReader(self.ref, self.bases, self.qual):
+                self.variants[variant] += 1
+            #for
         #if
     #__init__
 
     def __str__(self):
         return "%s\t%i\t%s\t%i\t%s\t%s" % (self.chrom, self.pos, self.ref,
             self.coverage, self.bases, self.qual)
+
+    def variant(self, threshold, freq):
+        """
+        """
+        result = []
+        for variant in self.simple_variants:
+            if (variant != '.' and self.simple_variants[variant] >= threshold
+                    and self.simple_variants[variant] / self.coverage >= freq):
+                result.append(variant)
+        return result
+    #varcall
+
+    def consensus(self):
+        """
+        """
+        result = max(self.simple_variants, key=lambda x:
+            self.simple_variants[x])
+        if result == '.':
+            return self.ref
+        return result
+    #consensus
 #PileRecord
 
 class PileReader(object):
@@ -162,6 +186,16 @@ def mpileup2wig(handle, gaps):
     #for
 #mpileup2wig
 
+def varcall(handle):
+    """
+    """
+    for record in PileReader(handle):
+        variant = record.variant(10, 0.1)
+        if variant:
+            print record.pos, variant
+    #for
+#varcall
+
 def main():
     """
     Main entry point.
@@ -169,17 +203,19 @@ def main():
     input_parser = argparse.ArgumentParser(add_help=False)
     input_parser.add_argument("INPUT", type=argparse.FileType('r'),
         help="pileup file")
+    output_parser = argparse.ArgumentParser(add_help=False)
+    output_parser.add_argument("OUTPUT", type=argparse.FileType('w'),
+        help="output file")
 
-    usage = __doc__.split("\n\n\n")
     parser = argparse.ArgumentParser(
         formatter_class=argparse.RawDescriptionHelpFormatter,
         description=usage[0], epilog=usage[1])
+    parser.add_argument('-v', action="version", version=version(parser.prog))
     subparsers = parser.add_subparsers(dest="subcommand")
 
     parser_pileup2wig = subparsers.add_parser("mpileup2wig",
-        parents=[input_parser], description=docSplit(mpileup2wig))
-    parser_pileup2wig.add_argument("OUTPUT", type=argparse.FileType('w'),
-        help="output file")
+        parents=[input_parser, output_parser],
+        description=docSplit(mpileup2wig))
     parser_pileup2wig.add_argument('-g', dest='gaps', action="store_const",
         const="remove", help='Remove large gaps.')
     parser_pileup2wig.add_argument('-G', dest='gaps', action="store_const",
@@ -192,11 +228,15 @@ def main():
     parser_pileup2tagwig.add_argument('-p', dest='threePrime', default=False,
         action="store_true", help="record the 3' end of the reads")
 
+    parser_varcall = subparsers.add_parser("varcall",
+        parents=[input_parser, output_parser], description=docSplit(varcall))
+
     args = parser.parse_args()
     name = os.path.splitext(os.path.basename(args.INPUT.name))[0]
 
     if args.subcommand == "mpileup2wig":
-        wiggelen.write(mpileup2wig(args.INPUT, args.gaps), args.OUTPUT)
+        wiggelen.write(mpileup2wig(args.INPUT, args.gaps), args.OUTPUT, str,
+            name, name)
 
     if args.subcommand == "mpileup2tagwig":
         wiggelen.write(mpileup2tagwig(args.INPUT, True, args.threePrime),
@@ -205,6 +245,9 @@ def main():
         wiggelen.write(mpileup2tagwig(args.INPUT, False, args.threePrime),
             args.OUTPUT[1], str, name + "_reverse", name + "_reverse")
     #if
+
+    if args.subcommand == "varcall":
+        varcall(args.INPUT)
 #main
 
 if __name__ == "__main__":
