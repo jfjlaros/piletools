@@ -10,6 +10,7 @@ import collections
 import wiggelen
 
 from . import docSplit, version, usage
+from basereader import BaseReader
 
 def findall(string, substring):
     """
@@ -30,83 +31,6 @@ def findall(string, substring):
 
     return occurences
 #findall
-
-class Base(object):
-    """
-    """
-    forward = ('A', 'C', 'G', 'T', '.', '>')
-    reverse = ('a', 'c', 'g', 't', ',', '<')
-
-    def __init__(self, nucleotide, quality, is_start=False, is_end=False):
-        """
-        """
-        self.nucleotide = nucleotide.upper()
-        self.quality = quality
-        self.is_start = is_start
-        self.is_end = is_end
-        self.is_forward = nucleotide in self.forward
-    #__init__
-
-    def __str__(self):
-        return "{} {} {} {} {} {}".format(self.nucleotide, self.quality,
-            self.is_start, self.is_end, self.is_forward)
-#Base
-
-class BaseReader(object):
-    """
-    """
-    def __init__(self, bases, qual):
-        """
-        @arg bases:
-        @type bases: str
-        """
-        self.bases = bases
-        self.qual = qual
-        self.base_offset = -1
-        self.qual_offset = -1
-    #__init__
-
-    def __iter__(self):
-        return self
-
-    def _get_indel(self):
-        """
-        @returns:
-        @rtype: str
-        """
-        self.base_offset += 1
-
-        len_str = ""
-        while self.bases[self.base_offset].isdigit():
-            len_str += self.bases[self.base_offset]
-            self.base_offset += 1
-        #while
-        length = int(len_str)
-
-        self.base_offset += length - 1
-        return self.bases[self.base_offset - length + 1:self.base_offset + 1]
-    #_get_indel
-
-    def next(self):
-        """
-        @returns:
-        @rtype: str
-        """
-        self.base_offset += 1
-        self.qual_offset += 1
-        if self.base_offset >= len(self.bases):
-            raise StopIteration
-
-        if self.bases[self.base_offset] == '^':
-            self.base_offset += 2
-            return Base(self.bases[self.base_offset],
-                self.qual[self.qual_offset], is_start=True)
-        #if
-        if self.bases[self.base_offset] in ('+', '-'):
-            return self.bases[self.base_offset] + self._get_indel()
-        return self.bases[self.base_offset]
-    #next
-#BaseReader
 
 class PileRecord(object):
     """
@@ -131,15 +55,12 @@ class PileRecord(object):
         self.bases = ""
         self.qual = ""
         self.variants = collections.defaultdict(int)
-        self.simple_variants = collections.defaultdict(int)
         if self.coverage:
             self.bases = field[4]
             self.qual = field[5]
 
-            for variant in BaseReader(self.bases, self.qual):
+            for variant in BaseReader(self.ref, self.bases, self.qual):
                 self.variants[variant] += 1
-                if variant not in self.special_chars:
-                    self.simple_variants[self._simplify(variant)] += 1
             #for
         #if
     #__init__
@@ -147,16 +68,6 @@ class PileRecord(object):
     def __str__(self):
         return "%s\t%i\t%s\t%i\t%s\t%s" % (self.chrom, self.pos, self.ref,
             self.coverage, self.bases, self.qual)
-
-    def _simplify(self, variant):
-        """
-        """
-        if variant == ',':
-            return '.'
-        if variant == '<': # Or the other way around, CHECK THIS.
-            return '>'
-        return variant.upper()
-    #_simplify
 
     def variant(self, threshold, freq):
         """

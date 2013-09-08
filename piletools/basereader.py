@@ -10,10 +10,9 @@ class Base(object):
         is_end=False):
         """
         """
+        self.nucleotide = nucleotide.upper()
         if nucleotide in self.reference:
             self.nucleotide = reference
-        else:
-            self.nucleotide = nucleotide.upper()
         self.quality = quality
         self.is_start = is_start
         self.is_end = is_end
